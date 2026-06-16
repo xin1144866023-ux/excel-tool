@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="bg" x1="154" y1="104" x2="870" y2="928" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#1d2939"/>
+      <stop offset="0.58" stop-color="#111827"/>
+      <stop offset="1" stop-color="#07110f"/>
+    </linearGradient>
+    <linearGradient id="paper" x1="272" y1="188" x2="706" y2="824" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#eef8f5"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="246" y1="192" x2="392" y2="792" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#15b79e"/>
+      <stop offset="1" stop-color="#087443"/>
+    </linearGradient>
+    <linearGradient id="arrow" x1="590" y1="652" x2="810" y2="400" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#0f766e"/>
+      <stop offset="1" stop-color="#d0902f"/>
+    </linearGradient>
+    <filter id="shadow" x="150" y="112" width="748" height="820" filterUnits="userSpaceOnUse" color-interpolation-filters="sRGB">
+      <feDropShadow dx="0" dy="34" stdDeviation="42" flood-color="#020617" flood-opacity="0.34"/>
+    </filter>
+    <clipPath id="sheetClip">
+      <rect x="246" y="176" width="532" height="648" rx="78"/>
+    </clipPath>
+  </defs>
+
+  <rect x="64" y="64" width="896" height="896" rx="220" fill="url(#bg)"/>
+  <path d="M188 256h648M188 384h648M188 512h648M188 640h648M188 768h648M256 188v648M384 188v648M512 188v648M640 188v648M768 188v648" fill="none" stroke="#ffffff" stroke-opacity="0.055" stroke-width="10"/>
+
+  <g filter="url(#shadow)">
+    <rect x="246" y="176" width="532" height="648" rx="78" fill="url(#paper)"/>
+    <g clip-path="url(#sheetClip)">
+      <rect x="246" y="176" width="132" height="648" fill="url(#rail)"/>
+      <path d="M378 306h400M378 438h400M378 570h400M378 702h400M506 176v648M634 176v648" fill="none" stroke="#0f766e" stroke-opacity="0.16" stroke-width="14"/>
+      <rect x="428" y="348" width="94" height="72" rx="18" fill="#d9fbf1"/>
+      <rect x="556" y="480" width="94" height="72" rx="18" fill="#d9fbf1"/>
+      <rect x="428" y="612" width="222" height="72" rx="18" fill="#edf7f3"/>
+    </g>
+  </g>
+
+  <path d="M292 386l36 46 54-96" fill="none" stroke="#ffffff" stroke-width="38" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M548 658 790 416" fill="none" stroke="url(#arrow)" stroke-width="70" stroke-linecap="round"/>
+  <path d="M654 406h150v150" fill="none" stroke="#f6c55f" stroke-width="70" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="786" cy="420" r="26" fill="#fff7df" fill-opacity="0.72"/>
+</svg>

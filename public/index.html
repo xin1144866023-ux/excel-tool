@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="zh-Hant">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Excel 工具</title>
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="shortcut icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <main class="page">
+      <header class="brand">
+        <span class="brand-mark">X</span>
+        <span class="brand-title">Excel 工具</span>
+        <span class="status-pill" id="health" hidden>檢查中</span>
+      </header>
+
+      <section class="tool">
+        <div class="motion-field" aria-hidden="true">
+          <span class="motion-line"></span>
+          <span class="motion-line"></span>
+          <span class="motion-line"></span>
+          <span class="motion-cell"></span>
+          <span class="motion-cell"></span>
+          <span class="motion-cell"></span>
+        </div>
+
+        <div class="tool-heading">
+          <span class="eyebrow">HTML 轉 Excel</span>
+          <h1>連結轉換工作台</h1>
+        </div>
+
+        <form id="convert-form" class="convert-form">
+          <label for="url">請貼上連結</label>
+          <div class="input-row">
+            <input
+              id="url"
+              name="url"
+              type="url"
+              required
+              autocomplete="off"
+              spellcheck="false"
+              placeholder="請貼上需要轉換的網頁連結"
+            />
+            <button id="submit" type="submit">匯出</button>
+          </div>
+        </form>
+
+        <div class="result" id="result" role="status" aria-live="polite" hidden></div>
+      </section>
+    </main>
+
+    <div class="loading-overlay" id="loading-overlay" hidden>
+      <div class="loading-shell">
+        <div class="loading-grid" aria-hidden="true"></div>
+        <div class="scanner" aria-hidden="true"></div>
+        <span class="eyebrow">匯出中</span>
+        <h2 id="loading-title">正在產生 Excel</h2>
+        <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+        <ol class="loading-steps" id="loading-steps">
+          <li data-stage="0">驗證連結</li>
+          <li data-stage="1">讀取頁面</li>
+          <li data-stage="2">產生檔案</li>
+        </ol>
+      </div>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

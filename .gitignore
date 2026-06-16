@@ -1,0 +1,14 @@
+node_modules/
+.DS_Store
+.playwright-cli/
+output/
+release/
+build/*
+!build/icon.svg
+!build/icon.png
+!build/icon.icns
+!build/icon.ico
+generated/
+desktop/bin/html-excel-converter*
+html-excel-converter.spec
+npm-debug.log*

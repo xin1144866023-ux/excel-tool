@@ -1,0 +1,88 @@
+{
+  "name": "html-excel-tool",
+  "version": "0.1.0",
+  "private": true,
+  "description": "HTML 連結轉換為可編輯 Excel 的桌面工具",
+  "main": "desktop/main.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node --test tests/*.test.js",
+    "desktop": "electron .",
+    "desktop:dev": "electron .",
+    "build:browsers": "node scripts/install-playwright-browsers.js",
+    "build:converter": "node scripts/build-converter.js",
+    "pack": "npm run build:browsers && npm run build:converter && electron-builder --dir",
+    "dist": "npm run build:browsers && npm run build:converter && electron-builder",
+    "dist:mac": "npm run build:browsers && npm run build:converter && electron-builder --mac dmg",
+    "dist:win": "npm run build:browsers && npm run build:converter && electron-builder --win nsis"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "playwright": "^1.61.0"
+  },
+  "devDependencies": {
+    "electron": "39.8.10",
+    "electron-builder": "26.15.3"
+  },
+  "build": {
+    "appId": "tech.exceltool.desktop",
+    "productName": "Excel 工具",
+    "asar": false,
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "build/**/*",
+      "desktop/**/*",
+      "public/**/*",
+      "scripts/**/*",
+      "server.js",
+      "converter.py",
+      "package.json",
+      "!node_modules/playwright-core/.local-browsers/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "node_modules/playwright-core/.local-browsers",
+        "to": "playwright-browsers",
+        "filter": [
+          "chromium_headless_shell-*/*/**",
+          "ffmpeg-*/*/**"
+        ]
+      }
+    ],
+    "mac": {
+      "category": "public.app-category.productivity",
+      "icon": "build/icon.icns",
+      "target": [
+        "dmg"
+      ]
+    },
+    "dmg": {
+      "icon": "build/icon.icns",
+      "iconSize": 88,
+      "contents": [
+        {
+          "x": 142,
+          "y": 220
+        },
+        {
+          "x": 410,
+          "y": 220,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        "nsis"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  }
+}
