@@ -14,7 +14,7 @@
     "pack": "npm run build:browsers && npm run build:converter && electron-builder --dir",
     "dist": "npm run build:browsers && npm run build:converter && electron-builder",
     "dist:mac": "npm run build:browsers && npm run build:converter && electron-builder --mac dmg",
-    "dist:win": "npm run build:browsers && npm run build:converter && electron-builder --win nsis"
+    "dist:win": "npm run build:browsers && npm run build:converter && electron-builder --win nsis --publish never"
   },
   "dependencies": {
     "express": "^5.2.1",
