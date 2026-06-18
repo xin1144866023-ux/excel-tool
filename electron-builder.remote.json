@@ -1,0 +1,53 @@
+{
+  "appId": "tech.exceltool.desktop",
+  "productName": "Excel 工具",
+  "asar": false,
+  "directories": {
+    "output": "release"
+  },
+  "files": [
+    "build/icon.*",
+    "desktop/**/*",
+    "public/**/*",
+    "server.js",
+    "package.json",
+    "!node_modules/playwright-core/.local-browsers/**/*",
+    "!desktop/bin/**/*",
+    "!converter.py",
+    "!scripts/**/*"
+  ],
+  "extraResources": [],
+  "mac": {
+    "category": "public.app-category.productivity",
+    "icon": "build/icon.icns",
+    "target": [
+      "dmg"
+    ]
+  },
+  "dmg": {
+    "icon": "build/icon.icns",
+    "iconSize": 88,
+    "contents": [
+      {
+        "x": 142,
+        "y": 220
+      },
+      {
+        "x": 410,
+        "y": 220,
+        "type": "link",
+        "path": "/Applications"
+      }
+    ]
+  },
+  "win": {
+    "icon": "build/icon.ico",
+    "target": [
+      "nsis"
+    ]
+  },
+  "nsis": {
+    "oneClick": false,
+    "allowToChangeInstallationDirectory": true
+  }
+}

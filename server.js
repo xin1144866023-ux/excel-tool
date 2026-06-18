@@ -44,6 +44,7 @@ const DEFAULT_GENERATED_DIR = process.env.GENERATED_DIR || path.join(__dirname, 
 const DEFAULT_STATIC_DIR = path.join(__dirname, "public");
 const DEFAULT_CONVERTER_SCRIPT = path.join(__dirname, "converter.py");
 const LOCAL_BROWSERS_DIR = path.join(__dirname, "node_modules", "playwright-core", ".local-browsers");
+const DEFAULT_REMOTE_CONVERT_API_BASE = process.env.CONVERT_API_BASE || "";
 
 function findFirstChildSync(root, prefix) {
   try {
@@ -108,6 +109,26 @@ function formatClientError(error) {
   }
 
   return "轉換失敗，請稍後再試。";
+}
+
+function normalizeRemoteApiBase(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value) {
+    return "";
+  }
+
+  const parsed = new URL(value);
+  if (!["http:", "https:"].includes(parsed.protocol)) {
+    throw new Error("遠程轉換服務地址無效。");
+  }
+  parsed.hash = "";
+  parsed.search = "";
+  return parsed.toString().replace(/\/$/, "");
+}
+
+function remoteConvertUrl(remoteApiBase) {
+  const normalized = normalizeRemoteApiBase(remoteApiBase);
+  return normalized ? `${normalized}/api/convert` : "";
 }
 
 function validateSourceUrl(rawUrl, allowedHosts = DEFAULT_ALLOWED_HOSTS) {
@@ -274,12 +295,17 @@ function createApp(options = {}) {
   const pythonBin = options.pythonBin || DEFAULT_PYTHON_BIN;
   const converterBin = options.converterBin || process.env.CONVERTER_BIN;
   const chromiumExecutablePath = resolveChromiumExecutablePath(options.chromiumExecutablePath);
+  const remoteConvertApiBase = normalizeRemoteApiBase(
+    options.remoteConvertApiBase ?? DEFAULT_REMOTE_CONVERT_API_BASE
+  );
 
   app.locals.excelTool = {
     allowedHosts: [...allowedHosts],
     generatedDir,
     converterBin,
     chromiumExecutablePath,
+    mode: remoteConvertApiBase ? "remote" : "local",
+    remoteConvertApiBase,
   };
 
   app.use(express.json({ limit: "1mb" }));
@@ -289,6 +315,35 @@ function createApp(options = {}) {
     const jobId = crypto.randomUUID();
     try {
       const url = validateSourceUrl(req.body?.url || "", allowedHosts);
+
+      if (remoteConvertApiBase) {
+        const remoteResponse = await fetch(remoteConvertUrl(remoteConvertApiBase), {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url }),
+        });
+
+        if (!remoteResponse.ok) {
+          const data = await remoteResponse.json().catch(() => ({}));
+          throw new Error(data.error || "轉換失敗。");
+        }
+
+        const fileBuffer = Buffer.from(await remoteResponse.arrayBuffer());
+        res
+          .status(remoteResponse.status)
+          .setHeader(
+            "Content-Type",
+            remoteResponse.headers.get("Content-Type") ||
+              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          );
+        const disposition = remoteResponse.headers.get("Content-Disposition");
+        if (disposition) {
+          res.setHeader("Content-Disposition", disposition);
+        }
+        res.send(fileBuffer);
+        return;
+      }
+
       await fs.mkdir(generatedDir, { recursive: true });
 
       const baseName = safeFilenameFromUrl(url);
@@ -312,7 +367,7 @@ function createApp(options = {}) {
   });
 
   app.get("/api/health", (_req, res) => {
-    res.json({ ok: true });
+    res.json({ ok: true, mode: remoteConvertApiBase ? "remote" : "local" });
   });
 
   return app;
@@ -358,6 +413,8 @@ module.exports = {
   findBundledPython,
   findLocalChromiumExecutable,
   parseAllowedHosts,
+  normalizeRemoteApiBase,
+  remoteConvertUrl,
   resolveChromiumExecutablePath,
   safeFilenameFromUrl,
   extractPagePayload,

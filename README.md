@@ -38,6 +38,14 @@ npm start
 http://localhost:4173
 ```
 
+如要讓本機介面調用遠程轉換服務，可設定：
+
+```bash
+CONVERT_API_BASE=https://convert.example.com npm start
+```
+
+此時本機只提供介面和下載代理，提取及 Excel 轉換會由遠程服務處理。
+
 ## 桌面應用程式
 
 專案可使用 Electron 打包為桌面應用程式。打包內容包括：
@@ -57,6 +65,12 @@ npm run dist:mac
 
 ```text
 release/Excel 工具-0.1.0-arm64.dmg
+```
+
+建立只調用遠程服務的 macOS DMG：
+
+```bash
+CONVERT_API_BASE=https://convert.example.com npm run dist:mac:remote
 ```
 
 在 Windows 打包機建立 Windows 安裝程式：
@@ -82,6 +96,8 @@ release/Excel 工具 Setup 0.1.0.exe
 未簽署的開發版本可用於本機測試。正式派發時，macOS 建議進行 Apple notarization，Windows 建議使用程式碼簽署。
 
 桌面應用程式會在本機運行，但轉換時仍需要連線讀取來源 HTML 連結。
+
+若使用 `CONVERT_API_BASE`，桌面應用程式會依賴遠程轉換服務；修復提取規則時，只需更新和部署遠程服務，客戶端通常不需要重新安裝。
 
 ## 運作方式
 

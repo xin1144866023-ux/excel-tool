@@ -12,9 +12,12 @@
     "build:browsers": "node scripts/install-playwright-browsers.js",
     "build:converter": "node scripts/build-converter.js",
     "pack": "npm run build:browsers && npm run build:converter && electron-builder --dir",
+    "pack:remote": "node scripts/write-desktop-config.js && electron-builder --config electron-builder.remote.json --dir",
     "dist": "npm run build:browsers && npm run build:converter && electron-builder",
     "dist:mac": "npm run build:browsers && npm run build:converter && electron-builder --mac dmg",
-    "dist:win": "npm run build:browsers && npm run build:converter && electron-builder --win nsis --publish never"
+    "dist:mac:remote": "node scripts/write-desktop-config.js && electron-builder --config electron-builder.remote.json --mac dmg",
+    "dist:win": "npm run build:browsers && npm run build:converter && electron-builder --win nsis --publish never",
+    "dist:win:remote": "node scripts/write-desktop-config.js && electron-builder --config electron-builder.remote.json --win nsis --publish never"
   },
   "dependencies": {
     "express": "^5.2.1",
@@ -32,7 +35,7 @@
       "output": "release"
     },
     "files": [
-      "build/**/*",
+      "build/icon.*",
       "desktop/**/*",
       "public/**/*",
       "scripts/**/*",

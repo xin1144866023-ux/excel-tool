@@ -9,6 +9,7 @@ build/*
 !build/icon.icns
 !build/icon.ico
 generated/
+desktop/generated-config.js
 desktop/bin/html-excel-converter*
 html-excel-converter.spec
 npm-debug.log*

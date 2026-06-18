@@ -2,6 +2,11 @@ name: Build Windows EXE
 
 on:
   workflow_dispatch:
+    inputs:
+      convert_api_base:
+        description: "Remote conversion API base URL. Leave empty to build the local converter package."
+        required: false
+        type: string
 
 jobs:
   build:
@@ -9,6 +14,7 @@ jobs:
     runs-on: windows-latest
     env:
       CSC_IDENTITY_AUTO_DISCOVERY: "false"
+      CONVERT_API_BASE: ${{ inputs.convert_api_base }}
 
     steps:
       - name: Checkout
@@ -26,6 +32,7 @@ jobs:
           python-version: "3.12"
 
       - name: Install Python packages
+        if: ${{ inputs.convert_api_base == '' }}
         run: python -m pip install --upgrade pyinstaller openpyxl
 
       - name: Install Node packages
@@ -35,7 +42,12 @@ jobs:
         run: npm test
 
       - name: Build Windows installer
+        if: ${{ inputs.convert_api_base == '' }}
         run: npm run dist:win
+
+      - name: Build remote Windows installer
+        if: ${{ inputs.convert_api_base != '' }}
+        run: npm run dist:win:remote
 
       - name: Upload installer
         uses: actions/upload-artifact@v4

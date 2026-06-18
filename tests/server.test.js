@@ -1,11 +1,14 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
-const { desktopAllowedHosts } = require("../desktop/runtime-config");
+const express = require("express");
+const { desktopAllowedHosts, desktopRemoteConvertApiBase } = require("../desktop/runtime-config");
 const {
   createApp,
   formatClientError,
   findLocalChromiumExecutable,
+  normalizeRemoteApiBase,
   parseAllowedHosts,
+  remoteConvertUrl,
   safeFilenameFromUrl,
   startServer,
   validateSourceUrl,
@@ -62,6 +65,12 @@ test("parseAllowedHosts accepts comma-separated host configuration", () => {
   ]);
 });
 
+test("remoteConvertUrl normalizes the configured API base", () => {
+  assert.equal(normalizeRemoteApiBase(" https://api.example.com/base/ "), "https://api.example.com/base");
+  assert.equal(remoteConvertUrl("https://api.example.com/base/"), "https://api.example.com/base/api/convert");
+  assert.equal(remoteConvertUrl(""), "");
+});
+
 test("desktopAllowedHosts includes packaged source hosts", () => {
   const expectedHosts = [
     "bXAubGlmZWJlZS50ZWNo",
@@ -76,6 +85,11 @@ test("desktopAllowedHosts lets environment configuration override packaged hosts
     "custom.example",
     "preview.example",
   ]);
+});
+
+test("desktopRemoteConvertApiBase reads environment configuration", () => {
+  assert.equal(desktopRemoteConvertApiBase("https://convert.example.com"), "https://convert.example.com");
+  assert.equal(desktopRemoteConvertApiBase(""), "");
 });
 
 test("createApp records injected desktop runtime paths", () => {
@@ -101,6 +115,7 @@ test("startServer exposes the health endpoint on an ephemeral port", async (t) =
   assert.equal(response.status, 200);
   assert.deepEqual(payload, {
     ok: true,
+    mode: "local",
   });
 });
 
@@ -129,4 +144,37 @@ test("convert endpoint returns a concise browser environment error", async (t) =
   assert.deepEqual(payload, {
     error: "轉換環境未就緒，請重新啟動應用程式後再試。",
   });
+});
+
+test("convert endpoint proxies conversion to a remote API when configured", async (t) => {
+  const remoteApp = express();
+  remoteApp.use(express.json());
+
+  remoteApp.post("/api/convert", (req, res) => {
+    assert.deepEqual(req.body, { url: "https://example.com/template" });
+    res
+      .status(200)
+      .setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      .setHeader("Content-Disposition", 'attachment; filename="remote.xlsx"')
+      .send(Buffer.from("xlsx-bytes"));
+  });
+
+  const remoteHandle = await startServer({ port: 0, app: remoteApp });
+  t.after(() => remoteHandle.server.close());
+
+  const handle = await startServer({
+    port: 0,
+    remoteConvertApiBase: remoteHandle.url,
+  });
+  t.after(() => handle.server.close());
+
+  const response = await fetch(`${handle.url}/api/convert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: "https://example.com/template" }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(response.headers.get("Content-Disposition"), 'attachment; filename="remote.xlsx"');
+  assert.equal(await response.text(), "xlsx-bytes");
 });
