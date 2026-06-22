@@ -41,7 +41,9 @@ http://localhost:4173
 如要讓本機介面調用遠程轉換服務，可設定：
 
 ```bash
-CONVERT_API_BASE=https://convert.example.com npm start
+CONVERT_API_BASE=https://convert.example.com \
+CONVERT_API_KEY=your-api-key \
+npm start
 ```
 
 此時本機只提供介面和下載代理，提取及 Excel 轉換會由遠程服務處理。
@@ -70,7 +72,9 @@ release/Excel 工具-0.1.0-arm64.dmg
 建立只調用遠程服務的 macOS DMG：
 
 ```bash
-CONVERT_API_BASE=https://convert.example.com npm run dist:mac:remote
+CONVERT_API_BASE=https://convert.example.com \
+CONVERT_API_KEY=your-api-key \
+npm run dist:mac:remote
 ```
 
 在 Windows 打包機建立 Windows 安裝程式：
@@ -82,10 +86,12 @@ npm run dist:win
 如沒有 Windows 電腦，可使用 GitHub Actions 的 Windows runner 打包：
 
 1. 將專案推送到 GitHub repository。
-2. 打開 GitHub 的 Actions 頁面。
-3. 選擇 `Build Windows EXE` workflow。
-4. 點擊 `Run workflow`。
-5. 完成後在 workflow artifact 下載 `excel-tool-windows`。
+2. 在 repository 的 `Settings` → `Secrets and variables` → `Actions` 新增 `CONVERT_API_KEY` secret。
+3. 打開 GitHub 的 Actions 頁面。
+4. 選擇 `Build Windows EXE` workflow。
+5. 點擊 `Run workflow`。
+6. 如要建立遠程 API 版本，填入 `convert_api_base`；如留空則建立內置本機轉換器版本。
+7. 完成後在 workflow artifact 下載 `excel-tool-windows`。
 
 輸出會包含 Windows 安裝程式：
 

@@ -1,7 +1,11 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
 const express = require("express");
-const { desktopAllowedHosts, desktopRemoteConvertApiBase } = require("../desktop/runtime-config");
+const {
+  desktopAllowedHosts,
+  desktopRemoteConvertApiBase,
+  desktopRemoteConvertApiKey,
+} = require("../desktop/runtime-config");
 const {
   createApp,
   formatClientError,
@@ -92,6 +96,11 @@ test("desktopRemoteConvertApiBase reads environment configuration", () => {
   assert.equal(desktopRemoteConvertApiBase(""), "");
 });
 
+test("desktopRemoteConvertApiKey reads environment configuration", () => {
+  assert.equal(desktopRemoteConvertApiKey(" secret-token "), "secret-token");
+  assert.equal(desktopRemoteConvertApiKey(""), "");
+});
+
 test("createApp records injected desktop runtime paths", () => {
   const app = createApp({
     generatedDir: "/tmp/excel-tool-generated",
@@ -116,6 +125,68 @@ test("startServer exposes the health endpoint on an ephemeral port", async (t) =
   assert.deepEqual(payload, {
     ok: true,
     mode: "local",
+  });
+});
+
+test("createApp can mount API routes under a configured base path", async (t) => {
+  const handle = await startServer({ port: 0, basePath: "/excel-convert" });
+  t.after(() => handle.server.close());
+
+  const response = await fetch(`${handle.url}/excel-convert/api/health`);
+  const payload = await response.json();
+
+  assert.equal(response.status, 200);
+  assert.deepEqual(payload, {
+    ok: true,
+    mode: "local",
+  });
+});
+
+test("convert endpoint requires an API key when configured", async (t) => {
+  const handle = await startServer({
+    port: 0,
+    apiAuthToken: "secret-token",
+  });
+  t.after(() => handle.server.close());
+
+  const response = await fetch(`${handle.url}/api/convert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: "https://unsupported.example/template" }),
+  });
+  const payload = await response.json();
+
+  assert.equal(response.status, 401);
+  assert.deepEqual(payload, {
+    error: "未授權的轉換請求。",
+  });
+});
+
+test("convert endpoint accepts a valid API key when configured", async (t) => {
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  t.after(() => {
+    console.error = originalConsoleError;
+  });
+
+  const handle = await startServer({
+    port: 0,
+    apiAuthToken: "secret-token",
+    allowedHosts: new Set(["example.com"]),
+    chromiumExecutablePath: "/tmp/missing-chrome-headless-shell",
+  });
+  t.after(() => handle.server.close());
+
+  const response = await fetch(`${handle.url}/api/convert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", "X-API-Key": "secret-token" },
+    body: JSON.stringify({ url: "https://example.com/template" }),
+  });
+  const payload = await response.json();
+
+  assert.equal(response.status, 400);
+  assert.deepEqual(payload, {
+    error: "轉換環境未就緒，請重新啟動應用程式後再試。",
   });
 });
 
@@ -151,6 +222,7 @@ test("convert endpoint proxies conversion to a remote API when configured", asyn
   remoteApp.use(express.json());
 
   remoteApp.post("/api/convert", (req, res) => {
+    assert.equal(req.get("X-API-Key"), "remote-secret-token");
     assert.deepEqual(req.body, { url: "https://example.com/template" });
     res
       .status(200)
@@ -165,6 +237,7 @@ test("convert endpoint proxies conversion to a remote API when configured", asyn
   const handle = await startServer({
     port: 0,
     remoteConvertApiBase: remoteHandle.url,
+    remoteConvertApiKey: "remote-secret-token",
   });
   t.after(() => handle.server.close());
 

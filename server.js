@@ -45,6 +45,9 @@ const DEFAULT_STATIC_DIR = path.join(__dirname, "public");
 const DEFAULT_CONVERTER_SCRIPT = path.join(__dirname, "converter.py");
 const LOCAL_BROWSERS_DIR = path.join(__dirname, "node_modules", "playwright-core", ".local-browsers");
 const DEFAULT_REMOTE_CONVERT_API_BASE = process.env.CONVERT_API_BASE || "";
+const DEFAULT_BASE_PATH = process.env.BASE_PATH || "";
+const DEFAULT_API_AUTH_TOKEN = process.env.API_AUTH_TOKEN || "";
+const DEFAULT_REMOTE_CONVERT_API_KEY = process.env.CONVERT_API_KEY || "";
 
 function findFirstChildSync(root, prefix) {
   try {
@@ -129,6 +132,44 @@ function normalizeRemoteApiBase(rawValue) {
 function remoteConvertUrl(remoteApiBase) {
   const normalized = normalizeRemoteApiBase(remoteApiBase);
   return normalized ? `${normalized}/api/convert` : "";
+}
+
+function normalizeBasePath(rawValue) {
+  const value = String(rawValue || "").trim();
+  if (!value || value === "/") {
+    return "";
+  }
+  if (!value.startsWith("/")) {
+    throw new Error("BASE_PATH must start with /.");
+  }
+  return value.replace(/\/+$/, "");
+}
+
+function normalizeApiToken(rawValue) {
+  return String(rawValue || "").trim();
+}
+
+function timingSafeEqualString(a, b) {
+  const left = Buffer.from(String(a || ""));
+  const right = Buffer.from(String(b || ""));
+  if (left.length !== right.length) {
+    return false;
+  }
+  return crypto.timingSafeEqual(left, right);
+}
+
+function requireApiKey(req, res, token) {
+  const expectedToken = normalizeApiToken(token);
+  if (!expectedToken) {
+    return true;
+  }
+
+  const providedToken = normalizeApiToken(req.get("X-API-Key"));
+  if (!providedToken || !timingSafeEqualString(providedToken, expectedToken)) {
+    res.status(401).json({ error: "未授權的轉換請求。" });
+    return false;
+  }
+  return true;
 }
 
 function validateSourceUrl(rawUrl, allowedHosts = DEFAULT_ALLOWED_HOSTS) {
@@ -289,12 +330,16 @@ function runPythonConverter(inputJsonPath, outputXlsxPath, options = {}) {
 
 function createApp(options = {}) {
   const app = express();
+  const apiRouter = express.Router();
   const allowedHosts = options.allowedHosts || DEFAULT_ALLOWED_HOSTS;
   const generatedDir = options.generatedDir || DEFAULT_GENERATED_DIR;
   const staticDir = options.staticDir || DEFAULT_STATIC_DIR;
   const pythonBin = options.pythonBin || DEFAULT_PYTHON_BIN;
   const converterBin = options.converterBin || process.env.CONVERTER_BIN;
   const chromiumExecutablePath = resolveChromiumExecutablePath(options.chromiumExecutablePath);
+  const basePath = normalizeBasePath(options.basePath ?? DEFAULT_BASE_PATH);
+  const apiAuthToken = normalizeApiToken(options.apiAuthToken ?? DEFAULT_API_AUTH_TOKEN);
+  const remoteConvertApiKey = normalizeApiToken(options.remoteConvertApiKey ?? DEFAULT_REMOTE_CONVERT_API_KEY);
   const remoteConvertApiBase = normalizeRemoteApiBase(
     options.remoteConvertApiBase ?? DEFAULT_REMOTE_CONVERT_API_BASE
   );
@@ -306,20 +351,30 @@ function createApp(options = {}) {
     chromiumExecutablePath,
     mode: remoteConvertApiBase ? "remote" : "local",
     remoteConvertApiBase,
+    basePath,
+    apiAuthEnabled: Boolean(apiAuthToken),
   };
 
   app.use(express.json({ limit: "1mb" }));
   app.use(express.static(staticDir));
 
-  app.post("/api/convert", async (req, res) => {
+  apiRouter.post("/api/convert", async (req, res) => {
     const jobId = crypto.randomUUID();
     try {
+      if (!requireApiKey(req, res, apiAuthToken)) {
+        return;
+      }
+
       const url = validateSourceUrl(req.body?.url || "", allowedHosts);
 
       if (remoteConvertApiBase) {
+        const headers = { "Content-Type": "application/json" };
+        if (remoteConvertApiKey) {
+          headers["X-API-Key"] = remoteConvertApiKey;
+        }
         const remoteResponse = await fetch(remoteConvertUrl(remoteConvertApiBase), {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers,
           body: JSON.stringify({ url }),
         });
 
@@ -366,9 +421,11 @@ function createApp(options = {}) {
     }
   });
 
-  app.get("/api/health", (_req, res) => {
+  apiRouter.get("/api/health", (_req, res) => {
     res.json({ ok: true, mode: remoteConvertApiBase ? "remote" : "local" });
   });
+
+  app.use(basePath || "/", apiRouter);
 
   return app;
 }
@@ -414,6 +471,8 @@ module.exports = {
   findLocalChromiumExecutable,
   parseAllowedHosts,
   normalizeRemoteApiBase,
+  normalizeBasePath,
+  normalizeApiToken,
   remoteConvertUrl,
   resolveChromiumExecutablePath,
   safeFilenameFromUrl,

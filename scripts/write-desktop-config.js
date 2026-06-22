@@ -17,8 +17,12 @@ function normalizeHttpUrl(rawValue) {
 }
 
 const convertApiBase = normalizeHttpUrl(process.env.CONVERT_API_BASE);
+const convertApiKey = String(process.env.CONVERT_API_KEY || "").trim();
+if (!convertApiKey) {
+  throw new Error("CONVERT_API_KEY is required for remote desktop builds.");
+}
 const targetPath = path.join(__dirname, "..", "desktop", "generated-config.js");
-const contents = `module.exports = ${JSON.stringify({ convertApiBase }, null, 2)};\n`;
+const contents = `module.exports = ${JSON.stringify({ convertApiBase, convertApiKey }, null, 2)};\n`;
 
 fs.writeFileSync(targetPath, contents, "utf8");
 console.log(`Wrote ${targetPath}`);

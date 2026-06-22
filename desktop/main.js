@@ -2,7 +2,7 @@ const fs = require("fs");
 const path = require("path");
 const { app, BrowserWindow, dialog, shell } = require("electron");
 const { startServer } = require("../server");
-const { desktopAllowedHosts, desktopRemoteConvertApiBase } = require("./runtime-config");
+const { desktopAllowedHosts, desktopRemoteConvertApiBase, desktopRemoteConvertApiKey } = require("./runtime-config");
 
 let mainWindow = null;
 let serverHandle = null;
@@ -93,6 +93,7 @@ function createWindow(url) {
 
 async function boot() {
   const remoteConvertApiBase = desktopRemoteConvertApiBase();
+  const remoteConvertApiKey = desktopRemoteConvertApiKey();
 
   if (!remoteConvertApiBase) {
     configurePlaywrightBrowsers();
@@ -105,6 +106,7 @@ async function boot() {
     port: 0,
     allowedHosts: desktopAllowedHosts(),
     remoteConvertApiBase,
+    remoteConvertApiKey,
     generatedDir,
     converterBin,
     pythonBin: process.env.PYTHON_BIN || "python3",

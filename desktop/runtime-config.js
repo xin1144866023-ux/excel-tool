@@ -23,7 +23,15 @@ function desktopRemoteConvertApiBase(envValue = process.env.CONVERT_API_BASE) {
   return String(generatedConfig.convertApiBase || "").trim();
 }
 
+function desktopRemoteConvertApiKey(envValue = process.env.CONVERT_API_KEY) {
+  if (envValue !== undefined) {
+    return String(envValue || "").trim();
+  }
+  return String(generatedConfig.convertApiKey || "").trim();
+}
+
 module.exports = {
   desktopAllowedHosts,
   desktopRemoteConvertApiBase,
+  desktopRemoteConvertApiKey,
 };
