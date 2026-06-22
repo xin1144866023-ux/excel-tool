@@ -172,7 +172,7 @@ function requireApiKey(req, res, token) {
   return true;
 }
 
-function validateSourceUrl(rawUrl, allowedHosts = DEFAULT_ALLOWED_HOSTS) {
+function parseSourceUrl(rawUrl) {
   let parsed;
   try {
     parsed = new URL(rawUrl);
@@ -186,10 +186,19 @@ function validateSourceUrl(rawUrl, allowedHosts = DEFAULT_ALLOWED_HOSTS) {
   if (parsed.username || parsed.password) {
     throw new Error("不支援含有內嵌帳戶資料的 URL。");
   }
+  return parsed;
+}
+
+function validateSourceUrl(rawUrl, allowedHosts = DEFAULT_ALLOWED_HOSTS) {
+  const parsed = parseSourceUrl(rawUrl);
   if (!allowedHosts.has(parsed.hostname.toLowerCase())) {
     throw new Error("暫不支援此連結。");
   }
   return parsed.toString();
+}
+
+function validateRemoteSourceUrl(rawUrl) {
+  return parseSourceUrl(rawUrl).toString();
 }
 
 function safeFilenameFromUrl(rawUrl) {
@@ -365,7 +374,9 @@ function createApp(options = {}) {
         return;
       }
 
-      const url = validateSourceUrl(req.body?.url || "", allowedHosts);
+      const url = remoteConvertApiBase
+        ? validateRemoteSourceUrl(req.body?.url || "")
+        : validateSourceUrl(req.body?.url || "", allowedHosts);
 
       if (remoteConvertApiBase) {
         const headers = { "Content-Type": "application/json" };
@@ -473,6 +484,7 @@ module.exports = {
   normalizeRemoteApiBase,
   normalizeBasePath,
   normalizeApiToken,
+  validateRemoteSourceUrl,
   remoteConvertUrl,
   resolveChromiumExecutablePath,
   safeFilenameFromUrl,

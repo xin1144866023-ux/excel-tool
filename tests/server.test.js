@@ -251,3 +251,35 @@ test("convert endpoint proxies conversion to a remote API when configured", asyn
   assert.equal(response.headers.get("Content-Disposition"), 'attachment; filename="remote.xlsx"');
   assert.equal(await response.text(), "xlsx-bytes");
 });
+
+test("remote conversion delegates source host validation to the remote API", async (t) => {
+  const remoteApp = express();
+  remoteApp.use(express.json());
+
+  remoteApp.post("/api/convert", (req, res) => {
+    assert.deepEqual(req.body, { url: "https://new-source.example/template" });
+    res
+      .status(200)
+      .setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+      .send(Buffer.from("remote-host-ok"));
+  });
+
+  const remoteHandle = await startServer({ port: 0, app: remoteApp });
+  t.after(() => remoteHandle.server.close());
+
+  const handle = await startServer({
+    port: 0,
+    allowedHosts: new Set(["example.com"]),
+    remoteConvertApiBase: remoteHandle.url,
+  });
+  t.after(() => handle.server.close());
+
+  const response = await fetch(`${handle.url}/api/convert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ url: "https://new-source.example/template" }),
+  });
+
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), "remote-host-ok");
+});
