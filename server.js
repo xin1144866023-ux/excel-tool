@@ -236,10 +236,14 @@ async function extractPagePayload(rawUrl, options = {}) {
       throw new Error("暫不支援此連結。");
     }
 
-    await page.waitForSelector("table.life-table, .excel-table table, table", { timeout: 15000 });
+    await page.waitForSelector("table.life-table, .excel-table table, table.wol-table, table", { timeout: 15000 });
 
     return await page.evaluate(() => {
-      const table = document.querySelector("table.life-table") || document.querySelector(".excel-table table") || document.querySelector("table");
+      const table =
+        document.querySelector("table.life-table") ||
+        document.querySelector(".excel-table table") ||
+        document.querySelector("table.wol-table") ||
+        document.querySelector("table");
       if (!table) {
         throw new Error("暫不支援此頁面內容。");
       }
@@ -261,24 +265,44 @@ async function extractPagePayload(rawUrl, options = {}) {
         };
       };
 
+      const textOf = (el) => {
+        if (el.matches(".wol-profile") && el.children.length > 0) {
+          return [...el.children].map((child) => child.innerText.trim()).filter(Boolean).join("\n");
+        }
+        return el.innerText.trim();
+      };
+
       const elementRecord = (el) => {
         const base = styleOf(el);
         return {
           tag: el.tagName,
           className: String(el.className || ""),
-          text: el.innerText.trim(),
+          text: textOf(el),
           ...base,
         };
       };
 
-      const titleBar = document.querySelector(".life-title-bar") || document.querySelector(".excel-title");
-      const notes = document.querySelector(".life-notes") || document.querySelector(".excel-note");
+      const titleBar =
+        document.querySelector(".life-title-bar") ||
+        document.querySelector(".excel-title") ||
+        document.querySelector(".wol-title-bar");
+      const notes =
+        document.querySelector(".life-notes") ||
+        document.querySelector(".excel-note") ||
+        document.querySelector(".wol-notes");
+      const template = table.matches("table.life-table")
+        ? "life-table"
+        : table.closest(".excel-table")
+          ? "mercer-excel-table"
+          : table.matches("table.wol-table")
+            ? "lioner-wol-table"
+            : "generic-table";
 
       return {
         sourceUrl: location.href,
         extractedAt: new Date().toISOString(),
         title: document.title,
-        template: table.matches("table.life-table") ? "life-table" : table.closest(".excel-table") ? "mercer-excel-table" : "generic-table",
+        template,
         meta: {
           titleItems: titleBar ? [...titleBar.children].map(elementRecord) : [],
           noteItems: notes ? [...notes.children].map(elementRecord) : [],

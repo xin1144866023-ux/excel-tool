@@ -8,6 +8,7 @@ const {
 } = require("../desktop/runtime-config");
 const {
   createApp,
+  extractPagePayload,
   formatClientError,
   findLocalChromiumExecutable,
   normalizeRemoteApiBase,
@@ -283,3 +284,57 @@ test("remote conversion delegates source host validation to the remote API", asy
   assert.equal(response.status, 200);
   assert.equal(await response.text(), "remote-host-ok");
 });
+
+test(
+  "extractPagePayload recognizes Lioner WOL table metadata",
+  { skip: !findLocalChromiumExecutable() },
+  async (t) => {
+    const sourceApp = express();
+    sourceApp.get("/wol", (_req, res) => {
+      res.type("html").send(`<!doctype html>
+        <html>
+          <body>
+            <div class="lioner-wol-page lioner-wol-page--single lioner-wol-page--lang-sc">
+              <section class="wol-sheet">
+                <div class="wol-title-bar">
+                  <h1>终身人寿保险</h1>
+                  <div class="wol-profile">
+                    <span>男性, 30岁, 非吸烟者</span>
+                    <span>香港居民</span>
+                  </div>
+                </div>
+                <table class="wol-table">
+                  <tbody>
+                    <tr><th>保险公司</th><td colspan="2">永明金融</td></tr>
+                    <tr><th>首日退保价值</th><td>85.00%</td><td>656,300</td></tr>
+                  </tbody>
+                </table>
+                <div class="wol-notes">
+                  <div class="wol-notes-title">重要事项:</div>
+                  <div class="wol-note-line">1. 此初步报价并不涵盖市场所有寿险产品˳</div>
+                </div>
+              </section>
+            </div>
+          </body>
+        </html>`);
+    });
+
+    const sourceHandle = await startServer({ port: 0, app: sourceApp });
+    t.after(() => sourceHandle.server.close());
+
+    const payload = await extractPagePayload(`${sourceHandle.url}/wol`, {
+      allowedHosts: new Set(["127.0.0.1"]),
+      chromiumExecutablePath: findLocalChromiumExecutable(),
+    });
+
+    assert.equal(payload.template, "lioner-wol-table");
+    assert.deepEqual(
+      payload.meta.titleItems.map((item) => item.text),
+      ["终身人寿保险", "男性, 30岁, 非吸烟者\n香港居民"]
+    );
+    assert.deepEqual(
+      payload.meta.noteItems.map((item) => item.text),
+      ["重要事项:", "1. 此初步报价并不涵盖市场所有寿险产品˳"]
+    );
+  }
+);
