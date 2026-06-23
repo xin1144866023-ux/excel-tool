@@ -433,7 +433,7 @@ test("converter accepts label-only life tables with notes", { skip: !converterTe
         "wb = load_workbook(sys.argv[1], read_only=True, data_only=True)",
         "ws = wb['HTML 鏈接']",
         "values = [str(cell.value) for row in ws.iter_rows() for cell in row if cell.value is not None]",
-        "print(json.dumps({'rows': ws.max_row, 'cols': ws.max_column, 'title': ws['A1'].value, 'values': values}, ensure_ascii=False))",
+        "print(json.dumps({'rows': ws.max_row, 'cols': ws.max_column, 'title': ws['A1'].value, 'values': values}))",
       ].join("\n"),
       outputPath,
     ],
