@@ -1,6 +1,10 @@
 const assert = require("node:assert/strict");
 const test = require("node:test");
+const { spawnSync } = require("node:child_process");
 const express = require("express");
+const fs = require("node:fs");
+const os = require("node:os");
+const path = require("node:path");
 const {
   desktopAllowedHosts,
   desktopRemoteConvertApiBase,
@@ -10,6 +14,7 @@ const {
   createApp,
   extractPagePayload,
   formatClientError,
+  findBundledPython,
   findLocalChromiumExecutable,
   normalizeRemoteApiBase,
   parseAllowedHosts,
@@ -18,6 +23,14 @@ const {
   startServer,
   validateSourceUrl,
 } = require("../server");
+
+function findConverterTestPython() {
+  return [process.env.PYTHON_BIN, findBundledPython(), "python3"]
+    .filter(Boolean)
+    .find((pythonBin) => spawnSync(pythonBin, ["-c", "import openpyxl"]).status === 0);
+}
+
+const converterTestPython = findConverterTestPython();
 
 test("validateSourceUrl accepts supported HTTPS source URLs", () => {
   const url = "https://example.com/proposal/custom/template/lioner?id=42&language=zh-Hant";
@@ -338,3 +351,101 @@ test(
     );
   }
 );
+
+test("converter accepts label-only life tables with notes", { skip: !converterTestPython }, () => {
+  const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), "excel-tool-empty-life-"));
+  const inputPath = path.join(tmpDir, "payload.json");
+  const outputPath = path.join(tmpDir, "output.xlsx");
+  const rows = [
+    "保险公司",
+    "保险类别",
+    "保单货币",
+    "身故赔偿",
+    "总保险费",
+    "推广优惠",
+    "折扣后总保险费",
+    "首日退保价值",
+    "1 年后",
+    "2 年后",
+    "保证期",
+  ].map((text, rowIndex) => ({
+    rowIndex,
+    rect: { height: 22 },
+    cells: [
+      {
+        cellIndex: 0,
+        text,
+        rowSpan: 1,
+        colSpan: 1,
+        rect: { width: 204, height: 22 },
+        style: {
+          backgroundColor: "rgb(242, 242, 242)",
+          color: "rgb(0, 0, 0)",
+          fontWeight: "600",
+          fontSize: "14px",
+          textAlign: "center",
+        },
+      },
+    ],
+  }));
+
+  fs.writeFileSync(
+    inputPath,
+    JSON.stringify({
+      sourceUrl: "https://example.com/template?id=1",
+      title: "建議書模版",
+      template: "life-table",
+      meta: {
+        titleItems: [
+          { text: "人寿保险", style: {}, rect: {} },
+          { text: "N/A, N/A,\nN/A", style: {}, rect: {} },
+        ],
+        noteItems: [
+          { text: "重要提示:", style: { backgroundColor: "rgb(184, 94, 23)" }, rect: {} },
+          { text: "1. 此初步报价并不涵盖市场所有寿险产品˳", style: {}, rect: {} },
+        ],
+      },
+      table: {
+        className: "life-table",
+        rect: { width: 204, height: 242 },
+        style: {},
+        rows,
+      },
+    }),
+    "utf8"
+  );
+
+  const result = spawnSync(converterTestPython, ["converter.py", inputPath, outputPath], {
+    cwd: path.join(__dirname, ".."),
+    encoding: "utf8",
+  });
+
+  assert.equal(result.status, 0, `${result.stdout}\n${result.stderr}`);
+  assert.ok(fs.existsSync(outputPath));
+
+  const inspect = spawnSync(
+    converterTestPython,
+    [
+      "-c",
+      [
+        "import json, sys",
+        "from openpyxl import load_workbook",
+        "wb = load_workbook(sys.argv[1], read_only=True, data_only=True)",
+        "ws = wb['HTML 鏈接']",
+        "values = [str(cell.value) for row in ws.iter_rows() for cell in row if cell.value is not None]",
+        "print(json.dumps({'rows': ws.max_row, 'cols': ws.max_column, 'title': ws['A1'].value, 'values': values}, ensure_ascii=False))",
+      ].join("\n"),
+      outputPath,
+    ],
+    { encoding: "utf8" }
+  );
+  assert.equal(inspect.status, 0, `${inspect.stdout}\n${inspect.stderr}`);
+  const workbook = JSON.parse(inspect.stdout);
+  const text = workbook.values.join("\n");
+  assert.equal(workbook.rows, 16);
+  assert.equal(workbook.cols, 1);
+  assert.equal(workbook.title, "人寿保险");
+  assert.match(text, /保险公司/);
+  assert.match(text, /总保险费/);
+  assert.match(text, /重要提示:/);
+});

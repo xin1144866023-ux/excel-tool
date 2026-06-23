@@ -114,7 +114,8 @@ def write_title(ws, meta: dict, max_cols: int) -> None:
     split_col = max(1, max_cols - 2)
 
     ws.merge_cells(start_row=1, start_column=1, end_row=1, end_column=split_col)
-    ws.merge_cells(start_row=1, start_column=split_col + 1, end_row=1, end_column=max_cols)
+    if max_cols > split_col:
+        ws.merge_cells(start_row=1, start_column=split_col + 1, end_row=1, end_column=max_cols)
     for col in range(1, max_cols + 1):
         cell = ws.cell(1, col)
         cell.fill = PatternFill("solid", fgColor="D0CCCC")
@@ -124,9 +125,10 @@ def write_title(ws, meta: dict, max_cols: int) -> None:
 
     ws.cell(1, 1, title)
     ws.cell(1, 1).alignment = Alignment(horizontal="left", vertical="center")
-    ws.cell(1, split_col + 1, profile)
-    ws.cell(1, split_col + 1).font = Font(name="Arial", size=10, bold=True, color="000000")
-    ws.cell(1, split_col + 1).alignment = Alignment(horizontal="right", vertical="center", wrap_text=True)
+    if max_cols > split_col:
+        ws.cell(1, split_col + 1, profile)
+        ws.cell(1, split_col + 1).font = Font(name="Arial", size=10, bold=True, color="000000")
+        ws.cell(1, split_col + 1).alignment = Alignment(horizontal="right", vertical="center", wrap_text=True)
     ws.row_dimensions[1].height = 32
     ws.row_dimensions[2].height = 8
 
@@ -224,7 +226,7 @@ def verify_workbook(output_path: Path) -> None:
     ws = wb["HTML 鏈接"]
     if not ws["A1"].value:
         raise RuntimeError("missing page title")
-    if ws.max_row < 10 or ws.max_column < 3:
+    if ws.max_row < 10 or ws.max_column < 1:
         raise RuntimeError("output table is unexpectedly small")
 
 
